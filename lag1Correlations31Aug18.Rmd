@@ -1,0 +1,271 @@
+---
+title: "Lag1 Correlations"
+author: "Saurabh Gupta"
+date: "14 September 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# data folder
+```{r}
+# data folder
+data.folder <- "C:/Users/saura/Dropbox (Personal)/STATS 790B/Data Extraction 25Aug18"
+
+
+```
+
+# Pairs Plot - Number of patrons etc.
+
+## load data
+
+```{r}
+load(paste0(data.folder, "/trainlag1.df.rda"))
+
+data <- trainlag1.df
+rm(trainlag1.df)
+
+```
+
+
+## data matrix
+
+```{r}
+colnames(data)
+
+X <- as.matrix(Filter(is.numeric, data))
+
+
+```
+
+
+## Renate's function for a more informative pairs plot
+
+
+```{r}
+
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+usr <- par("usr"); on.exit(par(usr))
+par(usr = c(0, 1, 0, 1))
+
+r <- cor(x, y, use = "pairwise.complete.obs")
+
+txt <- format(c(r, 0.123456789), digits = digits)[1]
+
+txt <- paste0(prefix, txt)
+
+#if(missing(cex.cor)) 
+cex.cor <- 0.8/strwidth(txt)
+
+# min text size 
+cexnew <- cex.cor * abs(r)
+cexnew[cexnew < 1.4] <- 1.4
+    
+text(0.5, 0.5, txt, cex = cexnew)
+
+}
+
+```
+
+
+
+```{r}
+
+pdf(file = "pairs.pdf")
+
+pairs(X, upper.panel = panel.cor, cex = 0.7, main = "Numeric variables", lower.panel = function(...){smoothScatter(..., nrpoints = 50, add = TRUE)}, gap = 0.2)
+
+dev.off()
+```
+
+convert 0s to NA for plotting log X
+
+```{r}
+
+logX <- X
+
+logX[is.na(logX)] <- NA
+
+logX <- log(logX)
+
+
+pdf(file = "pairs_logxy.pdf")
+
+pairs(logX, upper.panel = panel.cor, cex = 0.7, main = "Numeric variables", lower.panel = function(...){smoothScatter(..., nrpoints = 50, add = TRUE)}, gap = 0.2)
+
+dev.off()
+```
+
+# Pairs Plot - log growth
+
+```{r}
+
+load(paste0(data.folder, "/lglag1.df.rda"))
+
+data <- lglag1.df
+```
+
+Check dataset - none are NaNs
+
+```{r}
+colnames(data)
+
+sum(apply(data, MARGIN = 2, FUN = is.nan))
+```
+
+## plot
+
+```{r}
+
+X <- data
+
+pdf(file = "pairs.lg.pdf")
+
+pairs(X, upper.panel = panel.cor, cex = 0.8, main = "Log growth of numeric variables", lower.panel = function(...){smoothScatter(..., nrpoints = 50, add = TRUE, bandwidth = 0.2)}, gap = 0.2)
+
+dev.off()
+```
+
+# Within individual artists
+
+## lag 1 correlations
+
+Load data
+
+```{r}
+load(paste0(data.folder, "/trainlag1.rda"))
+
+data <- trainlag1
+rm(trainlag1)
+```
+
+
+## load data on log growth in list format
+
+```{r}
+load(paste0(data.folder, "/lglag1.rda"))
+
+data <- lglag1
+rm(lglag1)
+```
+
+## data2 - log growth vs Cummulative variables
+
+data loaded in the last section
+
+```{r}
+
+data <-   lapply(lg2.list, FUN =
+           function(x){Filter(is.numeric, x)}
+         )
+```
+
+```{r}
+xlab <- "Lag 1 Correlation with Patrons (log growth)" 
+```
+
+
+## function to compute correlations
+
+```{r}
+
+corr.fun <- function(x){
+    # not required if all avrs are numeric
+    x <- Filter(is.numeric, x)
+    round(cor(x, use = "pairwise.complete.obs",
+              method = "pearson")[1, ] , 2)
+} 
+
+  
+```
+
+create list
+
+```{r}
+corr.list <- lapply(data, 
+                    FUN = corr.fun)
+```
+
+Convert to dataframe
+```{r}
+
+(plot.df <- corr.list[[1]])
+
+for (i in 2:length(corr.list)){
+  plot.df <- rbind(plot.df, corr.list[[i]])
+}
+
+```
+
+## check histogram
+```{r}
+# column names
+cnames <- colnames(plot.df)
+
+hist(plot.df[,3], main = cnames[3], xlab = xlab)
+```
+
+## create hist plot for latex
+
+```{r}
+# we need corr of last 6 columns. leave only first column.
+
+#pdf(file = "histcorr.pdf")
+
+# log growth vs Cummulative variables
+pdf(file = "lgcorr.pdf", paper = "a4")
+
+par(mfrow = c(3,2))
+
+for(j in 2:dim(plot.df)[2]){
+      hist(plot.df[,j],
+           main = cnames[j],
+           xlab = xlab
+           )
+}
+
+# mtext doesn't work with hist
+        
+dev.off()
+```
+
+# log growth vs Cummulative variables
+
+load data 
+
+```{r}
+# log growth
+load(paste0(data.folder, "/lg2.list.rda"))
+
+# data frame
+load(paste0(data.folder, "/lg2.df.rda"))
+```
+
+
+```{r}
+colnames(lg2.df)
+
+data <- lg2.df
+rm(lg2.df)
+```
+
+
+## plot
+
+```{r}
+
+X <- as.matrix(Filter(is.numeric, data))
+
+png(file = "pairs.lg2.png", width = 960, height = 960)
+
+pairs(X, lower.panel = panel.smooth, upper.panel = panel.cor, cex = 0.8, main = "log growth vs. lag 1 variables")
+
+dev.off()
+```
+
+
+
+
