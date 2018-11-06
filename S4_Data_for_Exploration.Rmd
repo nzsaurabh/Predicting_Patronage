@@ -1,0 +1,74 @@
+---
+title: "Extract_ExplorationData"
+author: "Saurabh Gupta"
+date: "27 August 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Number of Patrons - 10 random creators
+
+not required after first run
+
+```{r}
+datadir <- "C:/Users/saura/Dropbox (Personal)/STATS 790B/Data Extraction 25Aug18"
+
+load(paste0(datadir, "/traindnest4.rda"))
+```
+
+## extract data
+
+```{r}
+# need to get the same sample everytime
+set.seed(1234)
+
+# create index for random artists
+art.index <- length(traindnest4)
+
+months <- 1:length(traindnest4[[1]])
+
+# number of artists for which data is required
+n = 10
+rand.index <- sample(art.index, n)
+
+plot.qq <- vector("list", n)
+plot.patrons <- vector("list", n)
+art.names <- vector("character", n)
+
+log.fun <- function(x){
+  m = 2:length(x)
+  # division is important so that NAs return NA
+  log.growth <- log(x[m]/x[m-1])
+  return(log.growth)
+}
+
+j = 1
+for(i in rand.index){
+  plot.qq[[j]] <- log.fun(traindnest4[[i]])
+  plot.patrons[[j]] <- traindnest4[[i]]
+  art.names[j] <- names(traindnest4[i])
+  j = j+1
+  print(i)
+}
+
+```
+
+
+
+## Save the data as R objects
+
+```{r}
+save(plot.qq, file = "plot.qq.rda")
+
+save(plot.patrons, file = "plot.patrons.rda")
+
+save(art.names, file = "art.names.rda")
+
+```
+
+
+
