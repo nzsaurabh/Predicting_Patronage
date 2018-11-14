@@ -7,50 +7,54 @@ import dnest4.builder as bd
 quantities = np.loadtxt("data.txt")
 t = np.array(range(len(quantities) + 12))
 # log_returns = np.diff(np.log(quantities))
-data = {"y": quantities, "N": len(quantities), "t": t , "tt": np.square(t)}
+data = {"y": quantities, "N": len(quantities), "t": t , "tsq": np.square(t)}
 
 # Create the model
 model = bd.Model()
 
 # Parameters of AR(1) distribution with t innovations for data with trend
 # params for t distribution
-model.add_node(bd.Node("mu",  bd.Uniform(0, 10000)))
+model.add_node(bd.Node("beta0",  bd.Uniform(0.0, 10000.0)))
 
-model.add_node(bd.Node("log_beta", bd.T(-2.0, 1.0, 2.0)))
-model.add_node(bd.Node("beta", bd.Delta("exp(log_beta)")))
+model.add_node(bd.Node("log_sigma", bd.Uniform(-5.0, 5.0)))
+model.add_node(bd.Node("sigma", bd.Delta("exp(log_sigma)")))
 
-model.add_node(bd.Node("log_nu", bd.Uniform(-1.0, 5.0)))
-model.add_node(bd.Node("nu", bd.Delta("exp(log_nu)")))
+#model.add_node(bd.Node("log_beta", bd.T(-2.0, 1.0, 2.0)))
+#model.add_node(bd.Node("beta", bd.Delta("exp(log_beta)")))
+
+#model.add_node(bd.Node("log_nu", bd.Uniform(-1.0, 5.0)))
+#model.add_node(bd.Node("nu", bd.Delta("exp(log_nu)")))
 
 # prior for AR1 coef changed by Saurabh
 #model.add_node(bd.Node("log_L", bd.Uniform(-10.0, 10.0)))
 #model.add_node(bd.Node("L", bd.Delta("exp(log_L)")))
+
 model.add_node(bd.Node("alpha", bd.Normal(0, 1)))
 
 # prior for linear trend added by Saurabh
-model.add_node(bd.Node("beta2", bd.Uniform(-5000.0, 5000.0)))
+model.add_node(bd.Node("beta1", bd.Normal(0, 100)))
 
 # prior for quadratic trend added by Saurabh
-model.add_node(bd.Node("beta3", bd.Uniform(-1000.0, 1000.0)))
+model.add_node(bd.Node("beta2", bd.Normal(0, 10)))
 
 # Conditional prior for the data
 for i in range(1, data["N"]):
 	name = "y{index}".format(index=i)
 	# trend added by Saurabh
-	mean = "mu + beta2*t{index} + beta3*tt{index} + alpha*(y{past} - mu - beta2*t{index} - beta3*tt{index} )".format(index=i, past=i-1)
+	mean = "beta0 + beta1*t{index} + beta2*tsq{index} + alpha*(y{past} - beta0 - beta1*t{past} - beta2*tsq{past} )".format(index=i, past=i-1)
 	model.add_node(bd.Node(name,
-                           bd.T(mean, "beta", "nu"),
+                           bd.Normal(mean, "sigma"),
                            observed=True))
 
 # trend added by Saurabh
 # Predict next 12 months
-mean0="mu + beta2*t{index2} + beta3*tt{index2}  + alpha*(y{last} -mu -beta2*t{index2})".format(index2=24, last=data["N"]-1)
-ypred=bd.Node("ypred0", bd.T(mean0, "beta", "nu"))
+mean0="beta0 + beta1*t{index2} + beta2*tsq{index2}  + alpha*(y{last} - beta0 - beta1*t{last} - beta2*tsq{last})".format(index2=24, last=data["N"]-1)
+ypred=bd.Node("ypred0", bd.Normal(mean0, "sigma"))
 model.add_node(ypred)
 for i in range(1, 12):
-	meani = "mu + beta2*t{index3} + beta3*tt{index3} + alpha*(ypred{k}-mu - beta2*t{index3} - beta3*tt{index3}  )".format(index3=i+24, k=i-1)
+	meani = "beta0 + beta1*t{index3} + beta2*tsq{index3} + alpha*(ypred{k} - beta0 - beta1*t{index4} - beta2*tsq{index4}  )".format(index3=i+24, k=i-1, index4=i+23)
 	ypred = bd.Node("ypred{i}".format(i=i),	
-                    bd.T(meani, "beta", "nu"))
+                    bd.Normal(meani, "sigma"))
 	model.add_node(ypred)
 
 # print predictions on the screen
